@@ -1,0 +1,22 @@
+<div>Redirecting...</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="scripts/cookies.js"></script>
+<script>
+    const socket = io();
+
+    // get the cookies
+    var UUID = getCookie("UUID");
+    var username = getCookie("username");
+    //send them to the server
+    socket.emit('validate', UUID);
+
+    // when redirected, go to new page and store reason in session cookie
+    socket.on('redirect', (data) => {
+        if(document.location.href != data.path){
+            document.location.href = data.path;
+        }
+        setCookie('redirectReason', data.reason, 0)
+    });
+
+</script>

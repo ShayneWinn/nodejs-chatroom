@@ -1,0 +1,90 @@
+<style>
+    body{
+        background: #3498db;
+        color: #242424;
+    }
+
+    .box{
+        background: white;
+        width: 60%;
+        height: 60%;
+        border-radius: 6px;
+        margin: 5% auto auto auto;
+        padding: 10px;
+        text-align: center;
+        box-shadow: 5px 5px 10px #888888;
+    }
+
+    .btn{
+        background:#2ecc71;
+        height:30px;
+        color:white;
+        border-radius:4px;
+    }
+    
+    .btn:hover{
+        background:#2CC06B;
+    }
+</style>
+
+<div class="box">
+    <h3>Welcome to my chatroom!</h3>
+    <div>Please enter you name</div>
+    <div>
+        <form id="login-form">
+            <input id="username" style="width:30%;height:30px;margin-top:10px" type="text">
+            <input class="btn" type="submit" value="Confirm">
+            <input id="remember" type="checkbox">Remember me for 7 days
+        </form>
+        <div id="error" style="color:crimson"></div>
+    </div>
+</div>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js" type="text/javascript"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="scripts/cookies.js"></script>
+<script>
+    const socket = io()
+    waiting = false;
+    
+    socket.emit('validate', getCookie('UUID'));
+
+    var loginForm = document.getElementById('login-form');
+    var userInput = document.getElementById('username');
+    var error = document.getElementById('error');
+
+    error.innerHTML = getCookie('redirectReason');
+
+    // when the user submits the login
+    loginForm.onsubmit = function(e){
+        e.preventDefault();
+        if(!waiting){
+            socket.emit('login', {
+                username: document.getElementById('username').value,
+                remember: document.getElementById('remember').value
+            })
+            waiting = true;
+        }
+    }
+
+    // if the login is a success
+    socket.on('loginSuccess', (data) => {
+        setCookie('UUID', data.UUID, data.exdays);
+        setCookie('username', data.username, data.exdays);
+        document.location.href = data.redirect;
+    });
+
+    // if the login fails, print reason
+    socket.on('loginFailure', (reason) => {
+        waiting = false;
+        document.getElementById('error').innerHTML = reason;
+    });
+
+    socket.on('redirect', (data) => {
+        if(window.location.pathname != data.path){
+            document.location.href = data.path;
+        }
+        setCookie('redirectReason', data.reason, 0)
+    });
+
+</script>

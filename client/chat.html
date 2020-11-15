@@ -1,0 +1,136 @@
+<style> 
+    body{
+        background:#3498db;
+    }
+    
+    .box{
+        background:white;
+        width:60%;
+        height:60%;
+        border-radius:6px;
+        margin: 5% auto auto auto;
+        padding: 10px;
+        text-align:center;
+        box-shadow: 5px 5px 10px #888888;
+    }
+    
+    .chatBox {
+        background:#f4f4f4;
+        border-radius:5px;
+        width:90%;
+        height:60%;
+        margin:5% auto 5% auto;
+        border:1px solid;
+        border-color:#f4f4f4;
+        overflow-y:scroll;
+    }
+    
+    .messageBox{
+        background: white;
+        border-radius:10px;
+        margin: 5px;
+    }
+
+    .chatCell {
+        width:100%;
+        height:auto;
+    }
+
+    .userName {
+        color:#1550db;
+        height:auto;
+        font-weight: bold;
+    }
+    
+    .btn{
+        background:#2ecc71;
+        height:30px;
+        color:white;
+        border-radius:4px;
+    }
+    
+    .btn:hover{
+        background:#2CC06B;
+    }
+
+</style>
+
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" type="text/css">
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js" type="text/javascript"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="scripts/cookies.js"></script>
+
+<div class="box">
+     <div>Chat</div>
+     <div style="font-size: small;" id="connected-users">There are 0 user(s) online</div>
+<div class ="chatBox" id="chat-box">
+    
+</div>
+<form id="chat-form">
+    <input id="chat-input" type="text" style="width:30%;height:30px;" autocomplete="off">
+    <input class = "btn" type="submit" value="Send"></input>
+</form>
+</div>
+</div>
+
+
+<script>
+    var socket = io();
+
+    socket.emit('joinChatroom', {
+        _uuid: getCookie('UUID'),
+        username: getCookie('username')
+    });
+
+    var chatText = document.getElementById('chat-box');
+    var chatInput = document.getElementById('chat-input');
+    var chatForm = document.getElementById('chat-form');
+    var typing = false;
+    
+    //add a chat cell to our chat list view, and scroll to the bottom
+    socket.on('addMessage', function(data){
+        console.log('got a chat message');
+        chatText.innerHTML +=   '<div class="messageBox" id="msg-box">' + 
+                                    `<div class="userName">${data.username}</div>` + 
+                                    `<div class="chatCell">${data.message}</div>` + 
+                                '</div>';
+        chatText.scrollTop = chatText.scrollHeight;
+              
+    });
+	
+    chatForm.onsubmit = function(e){
+        //prevent the form from refreshing the page
+        e.preventDefault();
+        
+        if(chatInput.value == ""){
+            return;
+        }
+
+        //call sendMsgToServer socket function, with form text value as argument
+        socket.emit('sendServerMessage', {
+            message: chatInput.value, 
+            username: getCookie('username'),
+            _uuid: getCookie('UUID')
+        });
+        chatInput.value = "";
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+                                
+            document.getElementById('chat-input').addEventListener('focus', function() {
+                typing = true;
+            });
+            
+            document.getElementById('chat-input').addEventListener('blur', function() {
+                typing = false;
+            });
+    });
+
+    socket.on('redirect', (data) => {
+        if(window.location.pathname != data.path){
+            document.location.href = data.path;
+        }
+        setCookie('redirectReason', data.reason, 0)
+    });
+
+</script>
