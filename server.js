@@ -44,12 +44,13 @@ var sockets = [];
  * @param {int} exdays    the number of days before the client expires (0 for session)
  */
 function createSession(UUID, username, exdays, inChat, id){
-    sessions[id] = {
+    sessions.push({
         UUID: UUID,
         username: username,
         expiration: date.getTime() + (exdays*24*60*60*1000),
-        inChat: inChat
-    }
+        inChat: inChat,
+        id: id
+    })
     numUsers++;
 }
 
@@ -106,16 +107,27 @@ function validateUsername(username){
 }
 
 
+function sendMessage(data){
+    for(i in sockets){
+        sockets[i].emit('addMessage', {
+            message: data.message,
+            username: data.username
+        });
+    }
+}
+
 // when a socket connects
 io.sockets.on('connection', (socket) => {
     console.log('new connection');
     sockets[socket.id] = socket;
 
     socket.on('disconnecting', () => {
+        //TODO: either figure out socket.io rooms or add inChat status to session
         if(socket.rooms.has('chatroom')){
-            socket.to('chatroom').emit('addMessage', {
+            sendMessage({
                 message: `${sessions[findSessionsByID(socket.id)].username} has left the chat.`,
-                username: 'Server'});
+                username: 'Server'
+            });
             console.log(`${sessions[findSessionsByID(socket.id)].username} left the chatroom`);
         }
         delete sockets[socket.id];
@@ -171,9 +183,10 @@ io.sockets.on('connection', (socket) => {
     socket.on('joinChatroom', (data) => {
         console.log("attempt to join chatroom");
         if(validateUUID(data._uuid)){
-            socket.emit('addMessage', {
+            sendMessage({
                 message: `${data.username} has joined the chat!`,
-                username: 'Server'});
+                username: 'Server'
+            });
             sessions[findSessionByUUID(_uuid)].id = socket.id;
             
             console.log(`${data.username} join the chatroom`);
@@ -191,7 +204,7 @@ io.sockets.on('connection', (socket) => {
     socket.on('sendServerMessage', (data) => {
         console.log("new message");
         if(validateUUID(data._uuid)){
-            socket.emit('addMessage', {
+            sendMessage({
                 message: data.message,
                 username: data.username
             });
