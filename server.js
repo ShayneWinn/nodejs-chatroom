@@ -64,7 +64,7 @@ function findSessionByUUID(_uuid){
     return -1;
 }
 
-function findSessionsByID(_id){
+function findSessionByID(_id){
     for(i in sessions){
         if(_id == sessions[i].id){
             return i;
@@ -122,31 +122,35 @@ io.sockets.on('connection', (socket) => {
     sockets[socket.id] = socket;
 
     socket.on('disconnecting', () => {
-        var i = findSessionsByID(socket.id);
-        console.log(`disconnection with i = ${i}`);
+        var i = findSessionByID(socket.id);
         if(i >= 0){
+            console.log(`${sessions[findSessionByID(socket.id)].UUID}:: disconnecting`);
             if(sessions[i].inChat){
                 sessions[i].inChat = false;
                 sendMessage({
-                    message: `${sessions[findSessionsByID(socket.id)].username} has left the chat.`,
+                    message: `${sessions[findSessionByID(socket.id)].username} has left the chat`,
                     username: 'Server'
                 });
-                console.log(`${sessions[findSessionsByID(socket.id)].username} left the chatroom`);
+                console.log(`    ${sessions[findSessionByID(socket.id)].username} left the chatroom`);
             }
+        }
+        else{
+            console.log('unknown socket dicsonnecting');
         }
         delete sockets[socket.id];
     });
 
+
     // anytime a page is loaded, validate user
     socket.on('validate', (_uuid) => {
-        console.log(`validation attempt $UUID=${_uuid}`);
+        console.log(`${_uuid}:: validation attempt`);
         // if the UUID is registered (they've connected before) and it is a valid uuid
         if(validateUUID(_uuid)){
             socket.emit('redirect', {
                 path: '/chat',
                 reason: ''
             });
-            console.log('   validation success');
+            console.log(`    ${_uuid}:: validation success`);
             sessions[findSessionByUUID(_uuid)].id = socket.id;
         }
         // if the uuid is not recognized
@@ -155,13 +159,14 @@ io.sockets.on('connection', (socket) => {
                 path: '/login',
                 reason: ''
             });
-            console.log('   validation failure');
+            console.log(`    ${_uuid}:: validation failure`);
         }
     });
 
+
     // if the user attempts to log in
     socket.on('login', (data) => {
-        console.log('login attempt');
+        console.log(`${data._uuid}:: login attempt`);
         // check their username
         if(validateUsername(data.username)){
             _uuid = UUIDlib.v4()
@@ -177,14 +182,15 @@ io.sockets.on('connection', (socket) => {
         }
         else{
             // send them a failure
-            console.log('    Login Failure; reason: ' + 'Username is not valid');
+            console.log(`    ${data._uuid}:: failed login; reason 'Username is not valid'`);
             socket.emit('loginFailure', 'Username is not valid');
         }
     });
 
+
     // join chatroom
     socket.on('joinChatroom', (data) => {
-        console.log("attempt to join chatroom");
+        console.log(`${data._uuid}:: attempt to join chatroom`);
         if(validateUUID(data._uuid)){
             sendMessage({
                 message: `${sessions[findSessionByUUID(data._uuid)].username} has joined the chat!`,
@@ -193,25 +199,43 @@ io.sockets.on('connection', (socket) => {
             sessions[findSessionByUUID(_uuid)].id = socket.id;
             sessions[findSessionByUUID(_uuid)].inChat = true;
             
-            console.log(`${sessions[findSessionByUUID(data._uuid)].username} join the chatroom`);
+            console.log(`    ${data._uuid}:: joined the chatroom with username ${sessions[findSessionByUUID(data._uuid)].username}`);
         }
         else{
             socket.emit('redirect', {
                 path: '/login',
                 reason: ''
             });
-            console.log('joinChatroom with Invalid Credentials');
+            console.log(`    ${data._uuid}:: failed to joing chartoom; reason 'invalid uuid'`);
         }
     });
 
+
     // when a message is sent
     socket.on('sendServerMessage', (data) => {
-        console.log("new message");
+        console.log(`${data._uuid}:: sent message '${data.message}'`);
         if(validateUUID(data._uuid)){
             sendMessage({
                 message: data.message,
                 username: sessions[findSessionByUUID(data._uuid)].username
             });
         }
+    });
+
+
+    // if the user logs out
+    socket.on('logout', (data) => {
+        if(validateUUID(data._uuid)){
+            console.log(`${data._uuid}:: logout`)
+            sendMessage({
+                message: `${sessions[findSessionByUUID(data._uuid)].username} has left the chat`,
+                username: 'Server'
+            });
+            delete sessions[findSessionByUUID(data._uuid)];
+        }
+        socket.emit('redirect', {
+            path: '/login',
+            reason: ''
+        });
     });
 });

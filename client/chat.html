@@ -53,6 +53,17 @@
         background:#2CC06B;
     }
 
+    .logout{
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #ff1f1f;
+    }
+    
+    .logout:hover{
+        background: #b41919;
+    }
+
 </style>
 
 <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" type="text/css">
@@ -60,16 +71,15 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="scripts/cookies.js"></script>
 
+<input type="button" class="logout" value="Logout" onclick="Logout()">
 <div class="box">
-     <div>Chat</div>
-     <div style="font-size: small;" id="connected-users">There are 0 user(s) online</div>
-<div class ="chatBox" id="chat-box">
-    
-</div>
-<form id="chat-form">
-    <input id="chat-input" type="text" style="width:30%;height:30px;" autocomplete="off">
-    <input class = "btn" type="submit" value="Send"></input>
-</form>
+    <div>Chat</div>
+    <div style="font-size: small;" id="connected-users">There are 0 user(s) online</div>
+    <div class ="chatBox" id="chat-box"></div>
+    <form id="chat-form">
+        <input id="chat-input" type="text" style="width:30%;height:30px;" autocomplete="off">
+        <input class = "btn" type="submit" value="Send">
+    </form>
 </div>
 </div>
 
@@ -84,7 +94,6 @@
     var chatText = document.getElementById('chat-box');
     var chatInput = document.getElementById('chat-input');
     var chatForm = document.getElementById('chat-form');
-    var typing = false;
     
     //add a chat cell to our chat list view, and scroll to the bottom
     socket.on('addMessage', function(data){
@@ -111,18 +120,13 @@
             _uuid: getCookie('UUID')
         });
         chatInput.value = "";
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-                                
-            document.getElementById('chat-input').addEventListener('focus', function() {
-                typing = true;
-            });
-            
-            document.getElementById('chat-input').addEventListener('blur', function() {
-                typing = false;
-            });
-    });
+    }
+
+    function Logout(){
+        socket.emit('logout', {
+            _uuid: getCookie('UUID')
+        });
+    }
 
     socket.on('redirect', (data) => {
         if(window.location.pathname != data.path){
