@@ -1,36 +1,37 @@
 // Customization
-const { emit } = require("process");
-const { Socket } = require("socket.io");
-
 const port = 3000;
 
 // Libraries
-const UUIDlib = require("uuid");
+const UUIDlib = require("uuid"); // used to create UUIDs
+
 const express = require("express"), app = express();
 const server = require("http").createServer(app)
   , io = require("socket.io")(server);
 
-app.set("client", __dirname + "/client/"); // "client" is used to mean the client subfolder
-app.use(express.static("client")); // default here
+app.set("client", __dirname + "/client/");
+app.use(express.static("client"));
 
-
-app.get('/', function(req, res){ // when a new connection to the homepage is recieved
-    res.sendFile(__dirname + '/client/index.html'); // send them to the homepage
+// when someone connects to homepage
+app.get('/', function(req, res){
+    // send them to homepage
+    res.sendFile(__dirname + '/client/index.html');
 });
+// when someone connects to /chat
 app.get('/chat', function(req, res){
+    // send them to chat
     res.sendFile(__dirname + '/client/chat.html');
 });
+// when someone connects to /login
 app.get('/login', function(req, res){
+    // send them to login
     res.sendFile(__dirname + '/client/login.html');
 });
 
-app.get('/', function(req, res){
-    console.log('app.get');
-});
-
+// start listening on the port specified
 server.listen(port);
 console.log(`Server Listening on port ${port}`);
 
+// globals
 var numUsers = 0; // number of active users
 var sessions = []; // global used to track active sessions
 var date = new Date() // class used to generate date
@@ -54,7 +55,11 @@ function createSession(UUID, username, exdays, inChat, id){
     numUsers++;
 }
 
-
+/**
+ * Locates and returns the session index based on the UUID
+ *     returns -1 on failure
+ * @param {UUID} _uuid 
+ */
 function findSessionByUUID(_uuid){
     for(i in sessions){
         if(_uuid == sessions[i].UUID){
@@ -64,6 +69,11 @@ function findSessionByUUID(_uuid){
     return -1;
 }
 
+/**
+ * Finds a session based on the socket.id
+ *     returns index of socket or -1 if not found
+ * @param {socket.id} _id 
+ */
 function findSessionByID(_id){
     for(i in sessions){
         if(_id == sessions[i].id){
@@ -106,7 +116,10 @@ function validateUsername(username){
     return true;
 }
 
-
+/**
+ * sends a message to the entire server/all sockets
+ * @param {} data 
+ */
 function sendMessage(data){
     for(i in sockets){
         sockets[i].emit('addMessage', {
@@ -121,12 +134,16 @@ io.sockets.on('connection', (socket) => {
     console.log('new connection');
     sockets[socket.id] = socket;
 
+    // when the socket disconnects
     socket.on('disconnecting', () => {
+        // get their session index
         var i = findSessionByID(socket.id);
+        // if they are a session
         if(i >= 0){
             console.log(`${sessions[findSessionByID(socket.id)].UUID}:: disconnecting`);
+            // notify server they left if they are inChat
             if(sessions[i].inChat){
-                sessions[i].inChat = false;
+                sessions[i].inChat = false
                 sendMessage({
                     message: `${sessions[findSessionByID(socket.id)].username} has left the chat`,
                     username: 'Server'
@@ -134,9 +151,11 @@ io.sockets.on('connection', (socket) => {
                 console.log(`    ${sessions[findSessionByID(socket.id)].username} left the chatroom`);
             }
         }
+        // if they are not a session
         else{
             console.log('unknown socket dicsonnecting');
         }
+        // remove them from sockets
         delete sockets[socket.id];
     });
 
@@ -146,6 +165,7 @@ io.sockets.on('connection', (socket) => {
         console.log(`${_uuid}:: validation attempt`);
         // if the UUID is registered (they've connected before) and it is a valid uuid
         if(validateUUID(_uuid)){
+            // send them to chat
             socket.emit('redirect', {
                 path: '/chat',
                 reason: ''
@@ -155,6 +175,7 @@ io.sockets.on('connection', (socket) => {
         }
         // if the uuid is not recognized
         else{
+            // send them to login
             socket.emit('redirect', {
                 path: '/login',
                 reason: ''
@@ -166,9 +187,10 @@ io.sockets.on('connection', (socket) => {
 
     // if the user attempts to log in
     socket.on('login', (data) => {
-        console.log(`${data._uuid}:: login attempt`);
+        console.log(`login attempt`);
         // check their username
         if(validateUsername(data.username)){
+            // create and add them to sessions
             _uuid = UUIDlib.v4()
             createSession(_uuid, data.username, data.remember * 7, false, socket.id);
 
@@ -191,17 +213,22 @@ io.sockets.on('connection', (socket) => {
     // join chatroom
     socket.on('joinChatroom', (data) => {
         console.log(`${data._uuid}:: attempt to join chatroom`);
+        // validate their connection
         if(validateUUID(data._uuid)){
+            // notify server
             sendMessage({
                 message: `${sessions[findSessionByUUID(data._uuid)].username} has joined the chat!`,
                 username: 'Server'
             });
+            // update their status
             sessions[findSessionByUUID(_uuid)].id = socket.id;
             sessions[findSessionByUUID(_uuid)].inChat = true;
             
             console.log(`    ${data._uuid}:: joined the chatroom with username ${sessions[findSessionByUUID(data._uuid)].username}`);
         }
+        // if they are not a valid login
         else{
+            // send them to login
             socket.emit('redirect', {
                 path: '/login',
                 reason: ''
@@ -214,6 +241,7 @@ io.sockets.on('connection', (socket) => {
     // when a message is sent
     socket.on('sendServerMessage', (data) => {
         console.log(`${data._uuid}:: sent message '${data.message}'`);
+        // check their UUID
         if(validateUUID(data._uuid)){
             sendMessage({
                 message: data.message,
@@ -225,14 +253,19 @@ io.sockets.on('connection', (socket) => {
 
     // if the user logs out
     socket.on('logout', (data) => {
+        // check their UUID
         if(validateUUID(data._uuid)){
             console.log(`${data._uuid}:: logout`)
+            // notify server
             sendMessage({
                 message: `${sessions[findSessionByUUID(data._uuid)].username} has left the chat`,
                 username: 'Server'
             });
+            // remove them
             delete sessions[findSessionByUUID(data._uuid)];
         }
+        // even if they are not a valid UUID
+        // send them to login
         socket.emit('redirect', {
             path: '/login',
             reason: ''
