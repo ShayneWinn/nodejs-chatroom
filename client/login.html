@@ -60,7 +60,7 @@
         e.preventDefault();
         if(!waiting){
             socket.emit('login', {
-                username: document.getElementById('username').value,
+                username: userInput.value,
                 remember: document.getElementById('remember').value
             })
             waiting = true;
@@ -70,7 +70,6 @@
     // if the login is a success
     socket.on('loginSuccess', (data) => {
         setCookie('UUID', data.UUID, data.exdays);
-        setCookie('username', data.username, data.exdays);
         document.location.href = data.redirect;
     });
 

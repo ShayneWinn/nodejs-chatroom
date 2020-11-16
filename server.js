@@ -122,13 +122,17 @@ io.sockets.on('connection', (socket) => {
     sockets[socket.id] = socket;
 
     socket.on('disconnecting', () => {
-        //TODO: either figure out socket.io rooms or add inChat status to session
-        if(socket.rooms.has('chatroom')){
-            sendMessage({
-                message: `${sessions[findSessionsByID(socket.id)].username} has left the chat.`,
-                username: 'Server'
-            });
-            console.log(`${sessions[findSessionsByID(socket.id)].username} left the chatroom`);
+        var i = findSessionsByID(socket.id);
+        console.log(`disconnection with i = ${i}`);
+        if(i >= 0){
+            if(sessions[i].inChat){
+                sessions[i].inChat = false;
+                sendMessage({
+                    message: `${sessions[findSessionsByID(socket.id)].username} has left the chat.`,
+                    username: 'Server'
+                });
+                console.log(`${sessions[findSessionsByID(socket.id)].username} left the chatroom`);
+            }
         }
         delete sockets[socket.id];
     });
@@ -161,12 +165,11 @@ io.sockets.on('connection', (socket) => {
         // check their username
         if(validateUsername(data.username)){
             _uuid = UUIDlib.v4()
-            createSession(_uuid, data.username, data.remember * 7, socket.id);
+            createSession(_uuid, data.username, data.remember * 7, false, socket.id);
 
             // send them a loginSuccess
             socket.emit('loginSuccess', {
                 UUID: _uuid, 
-                username: data.username,
                 exdays: data.remember * 7,
                 redirect: '/chat'
             });
@@ -184,12 +187,13 @@ io.sockets.on('connection', (socket) => {
         console.log("attempt to join chatroom");
         if(validateUUID(data._uuid)){
             sendMessage({
-                message: `${data.username} has joined the chat!`,
+                message: `${sessions[findSessionByUUID(data._uuid)].username} has joined the chat!`,
                 username: 'Server'
             });
             sessions[findSessionByUUID(_uuid)].id = socket.id;
+            sessions[findSessionByUUID(_uuid)].inChat = true;
             
-            console.log(`${data.username} join the chatroom`);
+            console.log(`${sessions[findSessionByUUID(data._uuid)].username} join the chatroom`);
         }
         else{
             socket.emit('redirect', {
@@ -206,7 +210,7 @@ io.sockets.on('connection', (socket) => {
         if(validateUUID(data._uuid)){
             sendMessage({
                 message: data.message,
-                username: data.username
+                username: sessions[findSessionByUUID(data._uuid)].username
             });
         }
     });
