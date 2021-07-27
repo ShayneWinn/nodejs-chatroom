@@ -61,7 +61,7 @@
         if(!waiting){
             socket.emit('login', {
                 username: userInput.value,
-                remember: document.getElementById('remember').value
+                remember: document.getElementById('remember').checked
             })
             waiting = true;
         }

@@ -192,12 +192,13 @@ io.sockets.on('connection', (socket) => {
         if(validateUsername(data.username)){
             // create and add them to sessions
             _uuid = UUIDlib.v4()
-            createSession(_uuid, data.username, data.remember * 7, false, socket.id);
+            console.log("data.remember=" + data.remember);
+            createSession(_uuid, data.username, (data.remember ? 7 : 0), false, socket.id);
 
             // send them a loginSuccess
             socket.emit('loginSuccess', {
                 UUID: _uuid, 
-                exdays: data.remember * 7,
+                exdays: (data.remember ? 7 : 0),
                 redirect: '/chat'
             });
             console.log(`    New User: $UUID=${_uuid}, $username=${data.username}`)
